@@ -43,8 +43,8 @@ This belongs in `/auth/anonymous` in your moodle folder. Use the plugin istaller
 
 ## Todo / Maybe
 
-[ ] Option and setting to assign user to a role
-[ ] Option to switch to openssl encryption for auth parameter
+   [ ] Option and setting to assign user to a role
+   [ ] Option to switch to openssl encryption for auth parameter
 
 ## Licence
 
