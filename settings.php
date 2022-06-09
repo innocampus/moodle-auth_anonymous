@@ -65,6 +65,14 @@ if ($ADMIN->fulltree) {
         PARAM_RAW_TRIMMED
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'auth_anonymous/regex',
+        get_string('keyregex', 'auth_anonymous'),
+        get_string('keyregex_desc', 'auth_anonymous'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
+
     $settings->add(new admin_setting_configselect(
         'auth_anonymous/timeout',
         get_string('timeout', 'auth_anonymous'),

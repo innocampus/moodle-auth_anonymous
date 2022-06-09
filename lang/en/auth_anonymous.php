@@ -19,8 +19,8 @@ $string['cohort_desc'] = 'The idnumber of a cohort to add the user to (optional;
 $string['logouturl'] = 'Logout url';
 $string['logouturl_desc'] = 'If set, users who log out using this authentication method will be redirected to this url afterwards.';
 
-$string['keyregex'] = 'Key regex';
-$string['keyregex_desc'] = 'A regular expression to validate the key against. If set, the key must match this regex to be valid.';
+$string['keyregex'] = 'Key validator';
+$string['keyregex_desc'] = 'A <a href="https://regexr.com/">regular expression</a> to validate the key against. If set, the key must match this regex to be valid.';
 
 $string['settings_desc'] = 'When authenticating as an anonymous user, a user record matching the key specified will be found or created and used for standard login. Users require a firstname, lastname and email to be set so these will be set to the values or defaults shown below.';
 

@@ -75,6 +75,7 @@ class auth_plugin_anonymous extends auth_plugin_base
         global $FULLME, $DB, $CFG, $USER;
 
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
+
         $altlogin = $CFG->alternateloginurl;
         if (empty($auth)) {
             $params = $this->retrieve_encoded_params($this->retrieve_query_string($FULLME));

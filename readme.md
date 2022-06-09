@@ -12,9 +12,9 @@ Because Guest access can't write to the database, only read. Sometimes you need 
 
 ## Security
 
-Could this be used to spam my site? Absolutely, so be careful where you use the url! You should specify a regular expression to match the key; if the key is rejected, the plugin will not trigger and your other authentication providers can take over.
+Firstly, properly lock down what the anonymous user can do once logged in. Could this be used to spam my site? Absolutely, so be careful where you use the url! Use POST to make it less obvious to the casual observer. You should specify a regular expression to match the key; if the key is rejected, the plugin will not trigger and your other authentication providers can take over. Or modify the plugin to use openssl_decrypt() with a reversible encryption algorithm such as aes-256-cbc instead of base64...
 
-## Example
+## Example (php GET)
 
 ```php
 
@@ -24,7 +24,6 @@ Could this be used to spam my site? Absolutely, so be careful where you use the 
         "course" => $courseId,
         "ts" => time()
     ]);
-
     header('Location: https://elearning.yourdomain.com/login/index.php?auth=' . base64_encode($params));
 
 ```
@@ -36,11 +35,16 @@ Could this be used to spam my site? Absolutely, so be careful where you use the 
 | course   | If set and greater than 1, open /course/view.php?id=X after a sucessful login |
 | ts       | Current unix timestamp, used to ensure link validity |
 
-Parameters **must be** base64 encoded and passed either as the entire query string, or as the `auth` parameter.
+Parameters **must be** base64 encoded and passed either as the entire query string (GET), or as the `auth` parameter (GET or POST).
 
 ## Set up
 
 This belongs in `/auth/anonymous` in your moodle folder. Use the plugin istaller if you can. You should also enable the authentication method through `Site Administration > Plugins > (Authentication) > Manage Authentication` and push its priority to the top.
+
+## Todo / Maybe
+
+[ ] Option and setting to assign user to a role
+[ ] Option to switch to openssl encryption for auth parameter
 
 ## Licence
 
