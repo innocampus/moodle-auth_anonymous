@@ -21,12 +21,6 @@ class auth_plugin_anonymous extends auth_plugin_base
 {
 
     const KEYNAME = "key"; // param to look for in the decoded url data
-    const FIRSTNAME = "anonymous";
-    const LASTNAME = "user";
-    const EMAIL = "anonymous@127.0.0.1";
-    const COHORT = "anonymous"; // the idnumber of the cohort to add the user to (used for enrolment into the course)
-    const TIMEOUT = 0; //18000; // set to 0 to bypass timeout
-
     private $salt = '93d5dded6d6cc57a62dbadda6d2fc260';
 
     /**
@@ -35,6 +29,14 @@ class auth_plugin_anonymous extends auth_plugin_base
     public function __construct() {
         $this->authtype = 'anonymous';
         $this->config = get_config('auth_anonymous');
+
+        $this->FIRSTNAME = $this->config->firstname ?: "anonymous";
+        $this->LASTNAME = $this->config->lastname ?: "user";
+        $this->EMAIL = $this->config->email ?: "anonymous@127.0.0.1";
+        $this->COHORT = $this->config->cohort ?: "anonymous";
+        $this->TIMEOUT = $this->config->timeout ?: 0;
+        $this->VALIDATOR = $this->config->regex ?: '/./g';
+
     }
 
     /**
@@ -75,8 +77,8 @@ class auth_plugin_anonymous extends auth_plugin_base
         global $FULLME, $DB, $CFG, $USER;
 
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
-
         $altlogin = $CFG->alternateloginurl;
+
         if (empty($auth)) {
             $params = $this->retrieve_encoded_params($this->retrieve_query_string($FULLME));
         } else {
@@ -88,7 +90,7 @@ class auth_plugin_anonymous extends auth_plugin_base
             $CFG->alternateloginurl = '';
         }
 
-        if ($hook_is_active && ($this->validate_parameters($params) and $this->validate_time($params['ts']))) {
+        if ($hook_is_active && ($this->validate_parameters($params) and $this->validate_time($params['ts']) and $this->validate_key($params[self::KEYNAME]))) {
             $identifier = md5($this->authtype . $params[self::KEYNAME]); // will yield a 32 char hash
             // $identifier = substr($this->authtype . $params[self::KEYNAME], 0, 100); // crop to username field length
 
@@ -97,9 +99,9 @@ class auth_plugin_anonymous extends auth_plugin_base
                 $user->username = $identifier;
                 $user->idnumber = $params[self::KEYNAME];
                 $user->password = hash_internal_user_password($identifier . $this->salt);
-                $user->firstname = self::FIRSTNAME;
-                $user->lastname = self::LASTNAME;
-                $user->email = self::EMAIL;
+                $user->firstname = $this->FIRSTNAME;
+                $user->lastname = $this->LASTNAME;
+                $user->email = $this->EMAIL;
                 $user->country = 'AU';
                 $user->auth = $this->authtype;
                 $user->mailformat = 0;
@@ -119,8 +121,8 @@ class auth_plugin_anonymous extends auth_plugin_base
                 set_moodle_cookie($USER->username);
 
                 // enrol users into the anonymous cohort so they have access to all courses
-                if ($DB->record_exists('cohort', array('idnumber'=> self::COHORT ))) {
-                    $cohortrow = $DB->get_record('cohort', array('idnumber' => self::COHORT));
+                if ($DB->record_exists('cohort', array('idnumber'=> $this->COHORT ))) {
+                    $cohortrow = $DB->get_record('cohort', array('idnumber' => $this->COHORT));
                     if (!$DB->record_exists('cohort_members', array('cohortid'=>$cohortrow->id, 'userid'=>$user->id))) {
                         cohort_add_member($cohortrow->id, $user->id); // internally triggers cohort_member_added event
                     }
@@ -160,8 +162,21 @@ class auth_plugin_anonymous extends auth_plugin_base
      * @return boolean
      */
     private function validate_time($time) {
-        if (self::TIMEOUT === 0) return true;
-        return (abs(time() - intval($time)) < self::TIMEOUT);
+        if ($this->TIMEOUT === 0) return true;
+        return (abs(time() - intval($time)) < $this->TIMEOUT);
+    }
+
+    /**
+     * Validate a key parameter with a regex
+     *
+     * @param string $key
+     * @return boolean
+     */
+    private function validate_key($key) {
+        if (empty($this->VALIDATOR)) $this->VALIDATOR = '/./'; // meaning "match any value"
+        if (substr($this->VALIDATOR,0,1) !== '/') $this->VALIDATOR = '/'.$this->VALIDATOR;
+        if (substr($this->VALIDATOR,-1,1) !== '/') $this->VALIDATOR = $this->VALIDATOR.'/';
+        return !empty(preg_grep($this->VALIDATOR, [$key]));
     }
 
     /**
