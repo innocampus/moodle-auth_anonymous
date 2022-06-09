@@ -35,13 +35,12 @@ Could this be used to spam my site? Absolutely, so be careful where you use the 
 | anon     | Must equal '1' |
 | course   | If set and greater than 1, open /course/view.php?id=X after a sucessful login |
 | ts       | Current unix timestamp, used to ensure link validity |
-| --- | --- |
 
-Parameters must be base64 encoded and passed either as the entire query string, or as the `auth` parameter.
+Parameters **must be** base64 encoded and passed either as the entire query string, or as the `auth` parameter.
 
 ## Set up
 
-This belongs in `/auth/anonymous` in your moodle folder. Use the plugin istaller if you can. You should also enable the authentication method through `Site Administration > Plugins > (Authentication) > Manage Authentication and push its priority to the top.
+This belongs in `/auth/anonymous` in your moodle folder. Use the plugin istaller if you can. You should also enable the authentication method through `Site Administration > Plugins > (Authentication) > Manage Authentication` and push its priority to the top.
 
 ## Licence
 
