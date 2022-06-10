@@ -88,6 +88,20 @@ if ($ADMIN->fulltree) {
         PARAM_INT
      ));
 
+    $roles = [0 => get_string('none')];
+    foreach (role_fix_names(get_all_roles(), context_system::instance(), ROLENAME_ORIGINAL) as $role) {
+        $roles[$role->id] = $role->localname;
+    };
+
+    $settings->add(new admin_setting_configselect(
+        'auth_anonymous/assignrole',
+        get_string('role', 'auth_anonymous'),
+        get_string('role_desc', 'auth_anonymous'),
+        0,
+        $roles,
+        PARAM_INT
+     ));
+
     $settings->add(new admin_setting_configtext(
         'auth_anonymous/logouturl',
         get_string('logouturl', 'auth_anonymous'),

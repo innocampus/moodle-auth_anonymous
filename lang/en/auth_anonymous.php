@@ -26,3 +26,6 @@ $string['settings_desc'] = 'When authenticating as an anonymous user, a user rec
 
 $string['timeout'] = 'Link timeout';
 $string['timeout_desc'] = 'The link contains a timestamp. This setting determines how long before it is rejected.';
+
+$string['role'] = 'Role:';
+$string['role_desc'] = 'Assign users to this role (optional)';

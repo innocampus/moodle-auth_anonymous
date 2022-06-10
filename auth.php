@@ -34,9 +34,9 @@ class auth_plugin_anonymous extends auth_plugin_base
         $this->LASTNAME = $this->config->lastname ?: "user";
         $this->EMAIL = $this->config->email ?: "anonymous@127.0.0.1";
         $this->COHORT = $this->config->cohort ?: "anonymous";
-        $this->TIMEOUT = $this->config->timeout ?: 0;
+        $this->TIMEOUT = intval($this->config->timeout) ?: 0;
         $this->VALIDATOR = $this->config->regex ?: '/./g';
-
+        $this->ROLE = $this->config->role ?: 0;
     }
 
     /**
@@ -175,7 +175,8 @@ exit;
      */
     private function validate_time($time) {
         if ($this->TIMEOUT === 0) return true;
-        return (abs(time() - intval($time)) < $this->TIMEOUT);
+        if (intval($time) > time()) return false; // future time
+        return time() - intval($time) <= $this->TIMEOUT;
     }
 
     /**
@@ -253,28 +254,11 @@ exit;
         return true;
     }
 
-    // todo: set up a anonymous role for the user and assign them
-    // called by authenticate_user_login()
-    // function sync_roles($user) {
-    //     global $DB;
-
-    //     $roles = get_ldap_assignable_role_names(2); // Admin user.
-
-    //     foreach ($roles as $role) {
-    //         $isrole = $this->is_role($user->username, $role);
-    //         if ($isrole === null) {
-    //             continue; // Nothing to sync - role/LDAP contexts not configured.
-    //         }
-
-    //         // Sync user.
-    //         $systemcontext = context_system::instance();
-    //         if ($isrole) {
-    //             // Following calls will not create duplicates.
-    //             role_assign($role['id'], $user->id, $systemcontext->id, $this->roleauth);
-    //         } else {
-    //             // Unassign only if previously assigned by this plugin.
-    //             role_unassign($role['id'], $user->id, $systemcontext->id, $this->roleauth);
-    //         }
-    //     }
-    // }
+    // if a role is set, assign the user to it
+    function sync_roles($user) {
+        if ($user && $this->ROLE !== 0) {
+            $systemcontext = context_system::instance();
+            role_assign($this->ROLE, $user->id, $systemcontext->id, 'auth_anonymous');
+        }
+    }
 }
