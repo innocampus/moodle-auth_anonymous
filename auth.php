@@ -48,13 +48,17 @@ class auth_plugin_anonymous extends auth_plugin_base
      */
     public function user_login($username, $password) {
         global $CFG, $DB;
+
+        if (!$username or !$password) {    // Don't allow blank usernames or passwords
+            return false;
+        }
+
+        // we just set the password, so will be valid
         if ($user = $DB->get_record('user', array('username' => $username, 'mnethostid' => $CFG->mnet_localhost_id))) {
-            // The following should always return false for this plugin as we
-            // don't store passwords internally. However we keep the check here
-            // for consistency.
             $valid = validate_internal_user_password($user, $password);
             return $valid;
         }
+
         return false;
     }
 
@@ -92,8 +96,6 @@ class auth_plugin_anonymous extends auth_plugin_base
 
         if ($hook_is_active && ($this->validate_parameters($params) and $this->validate_time($params['ts']) and $this->validate_key($params[self::KEYNAME]))) {
             $identifier = md5($this->authtype . $params[self::KEYNAME]); // will yield a 32 char hash
-            // $identifier = substr($this->authtype . $params[self::KEYNAME], 0, 100); // crop to username field length
-
             if (!$DB->record_exists('user', ['username' => $identifier, 'mnethostid' => $CFG->mnet_localhost_id, 'auth' => $this->authtype])) {
                 $user = new stdClass;
                 $user->username = $identifier;
@@ -113,6 +115,15 @@ class auth_plugin_anonymous extends auth_plugin_base
                 $user->id = $DB->insert_record('user', $user);
                 $user = $DB->get_record('user', array('id' => $user->id));
                 \core\event\user_created::create_from_userid($user->id)->trigger();
+
+            } else {
+
+                // must update the password so that validate_internal_user_password() doesn't see 'not cached'
+                $user = $DB->get_record('user', array('username' => $identifier));
+                $user->password = hash_internal_user_password($identifier . $this->salt);
+                $DB->update_record('user', $user);
+                \core\event\user_updated::create_from_userid($user->id)->trigger();
+
             }
 
             if ($user = authenticate_user_login($identifier, $identifier . $this->salt)) {
@@ -128,7 +139,7 @@ class auth_plugin_anonymous extends auth_plugin_base
                     }
                 }
 
-                if ($courseid = isset($params['course']) ? $params['course'] : 0 > 0) {
+                if (($courseid = isset($params['course']) ? $params['course'] : 0 > 0) && $DB->record_exists('course', array('id' => $courseid))) {
                     $urltogo = "/course/view.php?id=$courseid";
                 } else {
                     $urltogo = core_login_get_return_url();
@@ -141,7 +152,8 @@ class auth_plugin_anonymous extends auth_plugin_base
                 // restore alternate login url, let subsequent plugins take over
                 $CFG->alternateloginurl = $altlogin;
             }
-
+echo "end";
+exit;
         }
     }
 
@@ -240,4 +252,29 @@ class auth_plugin_anonymous extends auth_plugin_base
         set_config('logouturl', $config->logouturl, 'auth_anonymous');
         return true;
     }
+
+    // todo: set up a anonymous role for the user and assign them
+    // called by authenticate_user_login()
+    // function sync_roles($user) {
+    //     global $DB;
+
+    //     $roles = get_ldap_assignable_role_names(2); // Admin user.
+
+    //     foreach ($roles as $role) {
+    //         $isrole = $this->is_role($user->username, $role);
+    //         if ($isrole === null) {
+    //             continue; // Nothing to sync - role/LDAP contexts not configured.
+    //         }
+
+    //         // Sync user.
+    //         $systemcontext = context_system::instance();
+    //         if ($isrole) {
+    //             // Following calls will not create duplicates.
+    //             role_assign($role['id'], $user->id, $systemcontext->id, $this->roleauth);
+    //         } else {
+    //             // Unassign only if previously assigned by this plugin.
+    //             role_unassign($role['id'], $user->id, $systemcontext->id, $this->roleauth);
+    //         }
+    //     }
+    // }
 }
