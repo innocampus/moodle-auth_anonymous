@@ -130,9 +130,12 @@ class auth_plugin_anonymous extends auth_plugin_base
                 complete_user_login($user);
                 set_moodle_cookie($USER->username);
 
+                $cohort_name = $this->COHORT; // pick up default cohort to enrol into
+                if (isset($params['cohort'])) $cohort_name = $params['cohort']; // unless one is sent in parameters ... override
+
                 // enrol users into the anonymous cohort so they have access to all courses
-                if ($DB->record_exists('cohort', array('idnumber'=> $this->COHORT ))) {
-                    $cohortrow = $DB->get_record('cohort', array('idnumber' => $this->COHORT));
+                if ($DB->record_exists('cohort', array('idnumber'=> $cohort_name ))) {
+                    $cohortrow = $DB->get_record('cohort', array('idnumber' => $cohort_name));
                     if (!$DB->record_exists('cohort_members', array('cohortid'=>$cohortrow->id, 'userid'=>$user->id))) {
                         cohort_add_member($cohortrow->id, $user->id); // internally triggers cohort_member_added event
                     }
