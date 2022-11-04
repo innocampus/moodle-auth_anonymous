@@ -41,9 +41,24 @@ Parameters **must be** base64 encoded and passed either as the entire query stri
 
 This belongs in `/auth/anonymous` in your moodle folder. Use the plugin istaller if you can. You should also enable the authentication method through `Site Administration > Plugins > (Authentication) > Manage Authentication` and push its priority to the top.
 
+## Limiting Login
+
+I used this plugin in conjunction with a [course theme](https://github.com/frumbert/theme_arid). When the user browsed outside the course the theme was loaded in, you would be automatically logged off as the site fell back on Boost. There's a routine in the lib.php file for automatic log off that you can call.
+
+For instance in boost's `config.php` you can drop this at the bottom to automatically log the user out if Boost is loaded.
+
+```php
+// execute this when the theme loads
+// don't allow anonymous logon in this theme
+if (file_exists($CFG->dirroot . '/auth/anonymous/lib.php')) {
+    require_once($CFG->dirroot . '/auth/anonymous/lib.php');
+    auth_anonymous_autologout();
+}
+```
+
 ## Todo / Maybe
 
-   -[ ] Option to switch to openssl encryption for auth parameter
+   -[ ] Option to switch to openssl encryption for auth parameter (e.g. aes-cbc-256)
 
 ## Licence
 
