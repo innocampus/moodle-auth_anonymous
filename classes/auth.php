@@ -54,13 +54,13 @@ use stdClass;
 class auth extends auth_plugin_base {
     const KEYNAME = "key"; // param to look for in the decoded url data
 
-    private string $FIRSTNAME;
-    private string $LASTNAME;
-    private string $EMAIL;
-    private string $COHORT;
-    private int $TIMEOUT;
-    private string $VALIDATOR;
-    private int $ROLE;
+    private string $firstname;
+    private string $lastname;
+    private string $email;
+    private string $cohort;
+    private int $timeout;
+    private string $validator;
+    private int $role;
 
     /**
      * Fetches plugin config and assigns internal properties as needed.
@@ -71,13 +71,13 @@ class auth extends auth_plugin_base {
         $this->authtype = 'anonymous';
         $this->config = get_config('auth_anonymous');
 
-        $this->FIRSTNAME = $this->config->firstname ?: "anonymous";
-        $this->LASTNAME = $this->config->lastname ?: "user";
-        $this->EMAIL = $this->config->email ?: "anonymous@127.0.0.1";
-        $this->COHORT = $this->config->cohort ?: "anonymous";
-        $this->TIMEOUT = $this->config->timeout ?: 0;
-        $this->VALIDATOR = $this->config->regex ?: '/./'; // meaning "match any value"
-        $this->ROLE = $this->config->assignrole ?: 0;
+        $this->firstname = $this->config->firstname ?: "anonymous";
+        $this->lastname = $this->config->lastname ?: "user";
+        $this->email = $this->config->email ?: "anonymous@127.0.0.1";
+        $this->cohort = $this->config->cohort ?: "anonymous";
+        $this->timeout = $this->config->timeout ?: 0;
+        $this->validator = $this->config->regex ?: '/./'; // meaning "match any value"
+        $this->role = $this->config->assignrole ?: 0;
     }
 
     /**
@@ -144,9 +144,9 @@ class auth extends auth_plugin_base {
                 $user->username = $identifier;
                 $user->idnumber = $params[self::KEYNAME];
                 $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
-                $user->firstname = $this->FIRSTNAME;
-                $user->lastname = $this->LASTNAME;
-                $user->email = $this->EMAIL;
+                $user->firstname = $this->firstname;
+                $user->lastname = $this->lastname;
+                $user->email = $this->email;
                 $user->country = 'AU';
                 $user->auth = $this->authtype;
                 $user->mailformat = 0;
@@ -174,7 +174,7 @@ class auth extends auth_plugin_base {
                 complete_user_login($user);
                 set_moodle_cookie($USER->username);
 
-                $cohort_name = $this->COHORT; // pick up default cohort to enrol into
+                $cohort_name = $this->cohort; // pick up default cohort to enrol into
                 if (isset($params['cohort'])) $cohort_name = $params['cohort']; // unless one is sent in parameters ... override
 
                 // enrol users into the anonymous cohort so they have access to all courses
@@ -217,24 +217,24 @@ class auth extends auth_plugin_base {
      * Validates that the time is within the allowed window from the current UNIX time.
      *
      * @param int $time Timestamp since UNIX epoch.
-     * @return bool `true` if the provided timestamp is no more than {@see TIMEOUT} seconds in the past and not in the future.
+     * @return bool `true` if the provided timestamp is no more than {@see timeout} seconds in the past and not in the future.
      */
     private function validate_time(int $time): bool {
-        if ($this->TIMEOUT === 0) return true;
+        if ($this->timeout === 0) return true;
         if ($time > time()) return false; // future time
-        return time() - $time <= $this->TIMEOUT;
+        return time() - $time <= $this->timeout;
     }
 
     /**
-     * Validates the key with the {@see VALIDATOR} RegEx.
+     * Validates the key with the {@see validator} RegEx.
      *
      * @param string $key Key to validate.
-     * @return bool `true` if the key matches the {@see VALIDATOR} RegEx.
+     * @return bool `true` if the key matches the {@see validator} RegEx.
      */
     private function validate_key(string $key): bool {
-        if (!str_starts_with($this->VALIDATOR, '/')) $this->VALIDATOR = '/'.$this->VALIDATOR;
-        if (!str_ends_with($this->VALIDATOR, '/')) $this->VALIDATOR = $this->VALIDATOR.'/';
-        return preg_match($this->VALIDATOR, $key);
+        if (!str_starts_with($this->validator, '/')) $this->validator = '/'.$this->validator;
+        if (!str_ends_with($this->validator, '/')) $this->validator = $this->validator.'/';
+        return preg_match($this->validator, $key);
     }
 
     /**
@@ -283,9 +283,9 @@ class auth extends auth_plugin_base {
      * @throws dml_exception
      */
     function sync_roles($user): void {
-        if ($user && $this->ROLE !== 0) {
+        if ($user && $this->role !== 0) {
             $systemcontext = context_system::instance();
-            role_assign($this->ROLE, $user->id, $systemcontext->id, 'auth_anonymous');
+            role_assign($this->role, $user->id, $systemcontext->id, 'auth_anonymous');
         }
     }
 }
