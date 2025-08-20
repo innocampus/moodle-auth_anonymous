@@ -31,7 +31,12 @@ require_once("$CFG->libdir/authlib.php");
 require_once("$CFG->dirroot/cohort/lib.php");
 
 use auth_plugin_base;
+use coding_exception;
 use context_system;
+use core\event\user_created;
+use core\event\user_updated;
+use dml_exception;
+use moodle_exception;
 use moodle_url;
 use stdClass;
 
@@ -58,7 +63,9 @@ class auth extends auth_plugin_base {
     private int $ROLE;
 
     /**
-     * Constructor
+     * Fetches plugin config and assigns internal properties as needed.
+     *
+     * @throws dml_exception
      */
     public function __construct() {
         $this->authtype = 'anonymous';
@@ -74,44 +81,46 @@ class auth extends auth_plugin_base {
     }
 
     /**
-     * Returns true if the passed username and password validate.
+     * Returns `true` if the username and password work and `false` if they are wrong or don't exist.
      *
-     * @param string $username  the passed username
-     * @param string $password  cleartext password
-     * @return boolean
+     * @param string $username The username (with system magic quotes).
+     * @param string $password The password (with system magic quotes).
+     * @return bool Authentication success or failure.
+     * @throws dml_exception
      */
-    public function user_login($username, $password) {
+    public function user_login($username, $password): bool {
         global $CFG, $DB;
-
-        if (!$username or !$password) {    // Don't allow blank usernames or passwords
+        if (!$username or !$password) {
+            // Don't allow blank usernames or passwords.
             return false;
         }
-
-        // we just set the password, so will be valid
-        if ($user = $DB->get_record('user', array('username' => $username, 'mnethostid' => $CFG->mnet_localhost_id))) {
-            $valid = validate_internal_user_password($user, $password);
-            return $valid;
+        // We just set the password, so it will be valid.
+        if ($user = $DB->get_record('user', ['username' => $username, 'mnethostid' => $CFG->mnet_localhost_id])) {
+            return validate_internal_user_password($user, $password);
         }
-
         return false;
     }
 
     /**
-     * We do not authenticate directly to moodle user table
+     * We do not authenticate directly via the Moodle user table.
      *
-     * @return boolean
+     * @return false
      */
-    public function is_internal() {
+    public function is_internal(): false {
         return false;
     }
 
     /**
+     * Performs the actual registration/login logic.
+     *
      * Called at the start of the login page. This is the main landing point
-     * for the anonymous authentication as we are doing sso ie we trust the calls
-     * and simply log the user in. If the account doesn't exist then we simply
+     * for the anonymous authentication as we are doing sso i.e., we trust the calls
+     * and simply log the user in. If the account doesn't exist, then we simply
      * create it.
+     *
+     * @throws moodle_exception
      */
-    public function loginpage_hook() {
+    public function loginpage_hook(): void {
         global $FULLME, $DB, $CFG, $USER;
 
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
@@ -147,16 +156,16 @@ class auth extends auth_plugin_base {
                 $user->confirmed = 1;
 
                 $user->id = $DB->insert_record('user', $user);
-                $user = $DB->get_record('user', array('id' => $user->id));
-                \core\event\user_created::create_from_userid($user->id)->trigger();
+                $user = $DB->get_record('user', ['id' => $user->id]);
+                user_created::create_from_userid($user->id)->trigger();
 
             } else {
 
                 // must update the password so that validate_internal_user_password() doesn't see 'not cached'
-                $user = $DB->get_record('user', array('username' => $identifier));
+                $user = $DB->get_record('user', ['username' => $identifier]);
                 $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
                 $DB->update_record('user', $user);
-                \core\event\user_updated::create_from_userid($user->id)->trigger();
+                user_updated::create_from_userid($user->id)->trigger();
 
             }
 
@@ -169,14 +178,14 @@ class auth extends auth_plugin_base {
                 if (isset($params['cohort'])) $cohort_name = $params['cohort']; // unless one is sent in parameters ... override
 
                 // enrol users into the anonymous cohort so they have access to all courses
-                if ($DB->record_exists('cohort', array('idnumber'=> $cohort_name ))) {
-                    $cohortrow = $DB->get_record('cohort', array('idnumber' => $cohort_name));
-                    if (!$DB->record_exists('cohort_members', array('cohortid'=>$cohortrow->id, 'userid'=>$user->id))) {
+                if ($DB->record_exists('cohort', ['idnumber'=> $cohort_name])) {
+                    $cohortrow = $DB->get_record('cohort', ['idnumber' => $cohort_name]);
+                    if (!$DB->record_exists('cohort_members', ['cohortid'=>$cohortrow->id, 'userid'=>$user->id])) {
                         cohort_add_member($cohortrow->id, $user->id); // internally triggers cohort_member_added event
                     }
                 }
 
-                if (($courseid = isset($params['course']) ? $params['course'] : 0 > 0) && $DB->record_exists('course', array('id' => $courseid))) {
+                if (($courseid = isset($params['course']) ? $params['course'] : 0 > 0) && $DB->record_exists('course', ['id' => $courseid])) {
                     $urltogo = "/course/view.php?id=$courseid";
                 } else {
                     $urltogo = core_login_get_return_url();
@@ -195,77 +204,72 @@ class auth extends auth_plugin_base {
     }
 
     /**
-     * Confirm the expected parameters that are passed in exist
+     * Confirms that the relevant parameters exist.
      *
-     * @param array $params
-     * @return boolean
+     * @param array $params Associative array of parameters.
+     * @return bool `true` if the keys {@see self::KEYNAME} and `ts` are present.
      */
-    private function validate_parameters($params) {
+    private function validate_parameters(array $params): bool {
         return (isset($params[self::KEYNAME]) and isset($params['ts']));
     }
 
     /**
-     * Validate a time parameter to be within the allowed minutes of current unix time
+     * Validates that the time is within the allowed window from the current UNIX time.
      *
-     * @param int $time
-     * @return boolean
+     * @param int $time Timestamp since UNIX epoch.
+     * @return bool `true` if the provided timestamp is no more than {@see TIMEOUT} seconds in the past and not in the future.
      */
-    private function validate_time($time) {
+    private function validate_time(int $time): bool {
         if ($this->TIMEOUT === 0) return true;
-        if (intval($time) > time()) return false; // future time
-        return time() - intval($time) <= $this->TIMEOUT;
+        if ($time > time()) return false; // future time
+        return time() - $time <= $this->TIMEOUT;
     }
 
     /**
-     * Validate a key parameter with a regex
+     * Validates the key with the {@see VALIDATOR} RegEx.
      *
-     * @param string $key
-     * @return boolean
+     * @param string $key Key to validate.
+     * @return bool `true` if the key matches the {@see VALIDATOR} RegEx.
      */
-    private function validate_key($key) {
-        if (substr($this->VALIDATOR,0,1) !== '/') $this->VALIDATOR = '/'.$this->VALIDATOR;
-        if (substr($this->VALIDATOR,-1,1) !== '/') $this->VALIDATOR = $this->VALIDATOR.'/';
+    private function validate_key(string $key): bool {
+        if (!str_starts_with($this->VALIDATOR, '/')) $this->VALIDATOR = '/'.$this->VALIDATOR;
+        if (!str_ends_with($this->VALIDATOR, '/')) $this->VALIDATOR = $this->VALIDATOR.'/';
         return preg_match($this->VALIDATOR, $key);
     }
 
     /**
-     * Retrieve the query string from a url
+     * Retrieves the query string from a URL.
      *
-     * @param string $url  full url
-     * @return string
+     * @param string $url Any URL string.
+     * @return string Anything past the first occurrence of a question mark or an empty string, if no query parameters are present.
      */
-    private function retrieve_query_string($url) {
+    private function retrieve_query_string(string $url): string {
         if ($quespos = strpos($url, '?')) {
             return substr($url, $quespos + 1);
         }
-        else {
-            return '';
-        }
+        return '';
     }
 
     /**
-     * Given a base64 encoded string, decode and retrieve the GET style params
+     * Given a base64 encoded string, decodes and retrieves the query parameters.
      *
-     * @param string $encstr  base64 encoded string
-     * @return array
+     * @param string $encstr Base64 encoded string.
+     * @return array Associative array of decoded query parameters.
      */
-    private function retrieve_encoded_params($encstr) {
-        $params = array();
-
-        if ($decstr = base64_decode($encstr, true)) {
+    private function retrieve_encoded_params(string $encstr): array {
+        $params = [];
+        if ($decstr = base64_decode($encstr, strict: true)) {
             parse_str($decstr, $params);
         }
         return $params;
     }
 
     /**
-     * user has clicked LOG OUT
-     * If we have a custom logout set AND authenticated with this plugin, override it
+     * Facilitates logout behavior.
      *
-     * @global object
-     * @global string
+     * If we have a custom logout URL set AND the user is authenticated with this plugin, this overrides the redirect URL.
      */
-    public function logoutpage_hook() {
+    public function logoutpage_hook(): void {
         global $redirect, $USER;
         if ($USER->id > 0 && $USER->auth === $this->authtype && isset($this->config->logouturl)) {
             $redirect = $this->config->logouturl;
@@ -277,16 +281,20 @@ class auth extends auth_plugin_base {
      * Processes and stores configuration data for this authentication plugin.
      *
      * @param stdClass $config
-     * @return void
+     * @return true
      */
-    function process_config($config) {
-        // Save settings.
+    function process_config($config): true {
         set_config('logouturl', $config->logouturl, 'auth_anonymous');
         return true;
     }
 
-    // if a role is set, assign the user to it
-    function sync_roles($user) {
+    /**
+     * If a role for the anonymous user is configured, assigns the user to it.
+     *
+     * @throws coding_exception
+     * @throws dml_exception
+     */
+    function sync_roles($user): void {
         if ($user && $this->ROLE !== 0) {
             $systemcontext = context_system::instance();
             role_assign($this->ROLE, $user->id, $systemcontext->id, 'auth_anonymous');
