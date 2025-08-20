@@ -107,7 +107,7 @@ class auth_plugin_anonymous extends auth_plugin_base
                 $user = new stdClass;
                 $user->username = $identifier;
                 $user->idnumber = $params[self::KEYNAME];
-                $user->password = hash_internal_user_password($identifier . $CFG->passwordsaltmain);
+                $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
                 $user->firstname = $this->FIRSTNAME;
                 $user->lastname = $this->LASTNAME;
                 $user->email = $this->EMAIL;
@@ -127,13 +127,13 @@ class auth_plugin_anonymous extends auth_plugin_base
 
                 // must update the password so that validate_internal_user_password() doesn't see 'not cached'
                 $user = $DB->get_record('user', array('username' => $identifier));
-                $user->password = hash_internal_user_password($identifier . $CFG->passwordsaltmain);
+                $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
                 $DB->update_record('user', $user);
                 \core\event\user_updated::create_from_userid($user->id)->trigger();
 
             }
 
-            if ($user = authenticate_user_login($identifier, $identifier . $CFG->passwordsaltmain)) {
+            if ($user = authenticate_user_login($identifier, $identifier . ($CFG->passwordsaltmain ?? ''))) {
 
                 complete_user_login($user);
                 set_moodle_cookie($USER->username);
