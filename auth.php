@@ -226,12 +226,7 @@ exit;
         $params = array();
 
         if ($decstr = base64_decode($encstr, true)) {
-            if ($gps = explode('&', $decstr)) {
-                foreach ($gps as $gp) {
-                    $pp = explode('=', $gp);
-                    $params[$pp[0]] = isset($pp[1]) ? rawurldecode($pp[1]) : "";
-                }
-            }
+            parse_str($decstr, $params);
         }
         return $params;
     }
