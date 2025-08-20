@@ -22,6 +22,14 @@ class auth_plugin_anonymous extends auth_plugin_base
 
     const KEYNAME = "key"; // param to look for in the decoded url data
 
+    private string $FIRSTNAME;
+    private string $LASTNAME;
+    private string $EMAIL;
+    private string $COHORT;
+    private int $TIMEOUT;
+    private string $VALIDATOR;
+    private int $ROLE;
+
     /**
      * Constructor
      */
@@ -33,9 +41,9 @@ class auth_plugin_anonymous extends auth_plugin_base
         $this->LASTNAME = $this->config->lastname ?: "user";
         $this->EMAIL = $this->config->email ?: "anonymous@127.0.0.1";
         $this->COHORT = $this->config->cohort ?: "anonymous";
-        $this->TIMEOUT = intval($this->config->timeout) ?: 0;
+        $this->TIMEOUT = $this->config->timeout ?: 0;
         $this->VALIDATOR = $this->config->regex ?: '/./g';
-        $this->ROLE = $this->config->role ?: 0;
+        $this->ROLE = $this->config->assignrole ?: 0;
     }
 
     /**
