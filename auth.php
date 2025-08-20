@@ -42,7 +42,7 @@ class auth_plugin_anonymous extends auth_plugin_base
         $this->EMAIL = $this->config->email ?: "anonymous@127.0.0.1";
         $this->COHORT = $this->config->cohort ?: "anonymous";
         $this->TIMEOUT = $this->config->timeout ?: 0;
-        $this->VALIDATOR = $this->config->regex ?: '/./g';
+        $this->VALIDATOR = $this->config->regex ?: '/./'; // meaning "match any value"
         $this->ROLE = $this->config->assignrole ?: 0;
     }
 
@@ -196,10 +196,9 @@ exit;
      * @return boolean
      */
     private function validate_key($key) {
-        if (empty($this->VALIDATOR)) $this->VALIDATOR = '/./'; // meaning "match any value"
         if (substr($this->VALIDATOR,0,1) !== '/') $this->VALIDATOR = '/'.$this->VALIDATOR;
         if (substr($this->VALIDATOR,-1,1) !== '/') $this->VALIDATOR = $this->VALIDATOR.'/';
-        return !empty(preg_grep($this->VALIDATOR, [$key]));
+        return preg_match($this->VALIDATOR, $key);
     }
 
     /**
