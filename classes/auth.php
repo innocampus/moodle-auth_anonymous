@@ -276,18 +276,6 @@ class auth extends auth_plugin_base {
         }
     }
 
-
-    /**
-     * Processes and stores configuration data for this authentication plugin.
-     *
-     * @param stdClass $config
-     * @return true
-     */
-    function process_config($config): true {
-        set_config('logouturl', $config->logouturl, 'auth_anonymous');
-        return true;
-    }
-
     /**
      * If a role for the anonymous user is configured, assigns the user to it.
      *
