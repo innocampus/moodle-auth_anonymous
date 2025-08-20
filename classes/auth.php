@@ -185,7 +185,7 @@ class auth extends auth_plugin_base {
                     }
                 }
 
-                if (($courseid = isset($params['course']) ? $params['course'] : 0 > 0) && $DB->record_exists('course', ['id' => $courseid])) {
+                if (($courseid = $params['course'] ?? 0) > 0 && $DB->record_exists('course', ['id' => $courseid])) {
                     $urltogo = "/course/view.php?id=$courseid";
                 } else {
                     $urltogo = core_login_get_return_url();
