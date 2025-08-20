@@ -17,96 +17,105 @@
 /**
  * Admin settings and defaults.
  *
- * @package    auth
- * @subpackage anonmyous
- * @author tim.stclair@gmail.com
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package auth_anonymous
+ * @author  tim.stclair@gmail.com
+ * @author  Daniel Fainberg, TU Berlin
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * {@noinspection PhpUndefinedVariableInspection, PhpUnhandledExceptionInspection}
  */
 
+use core\lang_string;
+
 defined('MOODLE_INTERNAL') || die;
+
+global $ADMIN;
 
 if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_heading(
-        'auth_anonymous/info',
-        '',
-        get_string('settings_desc', 'auth_anonymous')
+        name: 'auth_anonymous/info',
+        heading: '',
+        information: new lang_string('settings_desc', 'auth_anonymous'),
     ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/cohort',
-        get_string('cohort','cohort'),
-        get_string('cohort_desc', 'auth_anonymous'),
-        'anonymous',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/cohort',
+        visiblename: new lang_string('cohort','cohort'),
+        description: new lang_string('cohort_desc', 'auth_anonymous'),
+        defaultsetting: 'anonymous',
+        paramtype: PARAM_RAW_TRIMMED,
     ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/firstname',
-        get_string('firstname'),
-        '',
-        'anonymous',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/firstname',
+        visiblename: new lang_string('firstname'),
+        description: '',
+        defaultsetting: 'anonymous',
+        paramtype: PARAM_RAW_TRIMMED,
     ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/lastname',
-        get_string('lastname'),
-        '',
-        'user',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/lastname',
+        visiblename: new lang_string('lastname'),
+        description: '',
+        defaultsetting: 'user',
+        paramtype: PARAM_RAW_TRIMMED,
     ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/email',
-        get_string('email'),
-        '',
-        'nobody@127.0.0.1',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/email',
+        visiblename: new lang_string('email'),
+        description: '',
+        defaultsetting: 'nobody@127.0.0.1',
+        paramtype: PARAM_RAW_TRIMMED,
     ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/regex',
-        get_string('keyregex', 'auth_anonymous'),
-        get_string('keyregex_desc', 'auth_anonymous'),
-        '',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/regex',
+        visiblename: new lang_string('keyregex', 'auth_anonymous'),
+        description: new lang_string('keyregex_desc', 'auth_anonymous'),
+        defaultsetting: '',
+        paramtype: PARAM_RAW_TRIMMED,
     ));
 
     $settings->add(new admin_setting_configselect(
-        'auth_anonymous/timeout',
-        get_string('timeout', 'auth_anonymous'),
-        get_string('timeout_desc', 'auth_anonymous'),
-        0,
-        [
-            0 => get_string('never'),
-            60 => get_string('numminutes','moodle', 1),
-            300 => get_string('numminutes','moodle', 5),
-            3600 => get_string('numhours','moodle', 1),
-            18000 => get_string('numhours','moodle', 5),
+        name: 'auth_anonymous/timeout',
+        visiblename: new lang_string('timeout', 'auth_anonymous'),
+        description: new lang_string('timeout_desc', 'auth_anonymous'),
+        defaultsetting: 0,
+        choices: [
+            0 => new lang_string('never'),
+            60 => new lang_string('numminutes','moodle', 1),
+            300 => new lang_string('numminutes','moodle', 5),
+            3600 => new lang_string('numhours','moodle', 1),
+            18000 => new lang_string('numhours','moodle', 5),
         ],
-        PARAM_INT
      ));
 
-    $roles = [0 => get_string('none')];
-    foreach (role_fix_names(get_all_roles(), context_system::instance(), ROLENAME_ORIGINAL) as $role) {
-        $roles[$role->id] = $role->localname;
-    };
-
+    $rolechoices = [0 => new lang_string('none')];
+    $systemroles = role_fix_names(
+        roleoptions: get_all_roles(),
+        context: context_system::instance(),
+        rolenamedisplay: ROLENAME_ORIGINAL,
+    );
+    foreach ($systemroles as $role) {
+        $rolechoices[$role->id] = $role->localname;
+    }
     $settings->add(new admin_setting_configselect(
-        'auth_anonymous/assignrole',
-        get_string('role', 'auth_anonymous'),
-        get_string('role_desc', 'auth_anonymous'),
-        0,
-        $roles,
-        PARAM_INT
+        name: 'auth_anonymous/assignrole',
+        visiblename: new lang_string('role', 'auth_anonymous'),
+        description: new lang_string('role_desc', 'auth_anonymous'),
+        defaultsetting: 0,
+        choices: $rolechoices,
      ));
 
     $settings->add(new admin_setting_configtext(
-        'auth_anonymous/logouturl',
-        get_string('logouturl', 'auth_anonymous'),
-        get_string('logouturl_desc', 'auth_anonymous'),
-        '',
-        PARAM_RAW_TRIMMED
+        name: 'auth_anonymous/logouturl',
+        visiblename: new lang_string('logouturl', 'auth_anonymous'),
+        description: new lang_string('logouturl_desc', 'auth_anonymous'),
+        defaultsetting: '',
+        paramtype: PARAM_RAW_TRIMMED,
      ));
+
 }
