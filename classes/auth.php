@@ -124,11 +124,8 @@ class auth extends auth_plugin_base {
      * @throws moodle_exception
      */
     public function loginpage_hook(): void {
-        global $CFG, $DB, $FULLME;
+        global $CFG, $DB;
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
-        if (empty($auth)) {
-            $auth = $this->retrieve_query_string($FULLME);
-        }
         $params = auth_params::from_array($this->retrieve_encoded_params($auth));
         if (!$this->validate_parameters($params)) {
             // If the parameters are invalid, we are not processing this request.
@@ -252,19 +249,6 @@ class auth extends auth_plugin_base {
             !preg_match($this->keyregex, $params->key) => false,
             default => true,
         };
-    }
-
-    /**
-     * Retrieves the query string from a URL.
-     *
-     * @param string $url Any URL string.
-     * @return string Anything past the first occurrence of a question mark or an empty string, if no query parameters are present.
-     */
-    private function retrieve_query_string(string $url): string {
-        if ($quespos = strpos($url, '?')) {
-            return substr($url, $quespos + 1);
-        }
-        return '';
     }
 
     /**
