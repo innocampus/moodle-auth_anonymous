@@ -52,14 +52,12 @@ use stdClass;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class auth extends auth_plugin_base {
-    const KEYNAME = "key"; // param to look for in the decoded url data
-
     private string $firstname;
     private string $lastname;
     private string $email;
     private string $cohort;
     private int $timeout;
-    private string $validator;
+    private string $keyregex;
     private int $role;
 
     /**
@@ -70,14 +68,19 @@ class auth extends auth_plugin_base {
     public function __construct() {
         $this->authtype = 'anonymous';
         $this->config = get_config('auth_anonymous');
-
-        $this->firstname = $this->config->firstname ?: "anonymous";
-        $this->lastname = $this->config->lastname ?: "user";
-        $this->email = $this->config->email ?: "anonymous@127.0.0.1";
-        $this->cohort = $this->config->cohort ?: "anonymous";
+        $this->firstname = $this->config->firstname ?: 'anonymous';
+        $this->lastname = $this->config->lastname ?: 'user';
+        $this->email = $this->config->email ?: 'anonymous@127.0.0.1';
+        $this->cohort = $this->config->cohort ?: 'anonymous';
         $this->timeout = $this->config->timeout ?: 0;
-        $this->validator = $this->config->regex ?: '/./'; // meaning "match any value"
         $this->role = $this->config->assignrole ?: 0;
+        $this->keyregex = $this->config->regex ?: '/./';
+        if (!str_starts_with($this->keyregex, '/')) {
+            $this->keyregex = "/$this->keyregex";
+        }
+        if (!str_ends_with($this->keyregex, '/')) {
+            $this->keyregex = "$this->keyregex/";
+        }
     }
 
     /**
@@ -124,22 +127,16 @@ class auth extends auth_plugin_base {
         global $CFG, $DB, $FULLME;
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
         if (empty($auth)) {
-            $params = $this->retrieve_encoded_params($this->retrieve_query_string($FULLME));
-        } else {
-            $params = $this->retrieve_encoded_params($auth);
+            $auth = $this->retrieve_query_string($FULLME);
         }
-        // If the 'anon' key is not set within the query params, we are not processing this request.
-        if (!($params && isset($params['anon']) && $params['anon'] === '1')) {
+        $params = auth_params::from_array($this->retrieve_encoded_params($auth));
+        if (!$this->validate_parameters($params)) {
+            // If the parameters are invalid, we are not processing this request.
             return;
         }
-        // If the parameters are invalid, we are not processing this request.
-        // TODO: Validate all parameters once using a class.
-        if (!($this->validate_parameters($params) and $this->validate_time($params['ts']) and $this->validate_key($params[self::KEYNAME]))) {
-            return;
-        }
-        $identifier = md5($this->authtype . $params[self::KEYNAME]); // will yield a 32 char hash
+        $identifier = md5($this->authtype . $params->key); // will yield a 32 char hash
         if (!$DB->record_exists('user', ['username' => $identifier, 'mnethostid' => $CFG->mnet_localhost_id, 'auth' => $this->authtype])) {
-            $this->create_anonymous_user($identifier, $params[self::KEYNAME]);
+            $this->create_anonymous_user($identifier, $params->key);
         } else {
             // Update the password so that `validate_internal_user_password` doesn't see 'not cached'.
             // TODO: Check if this is really necessary.
@@ -194,10 +191,10 @@ class auth extends auth_plugin_base {
      * Attempts to log in an anonymous user from the login page hook.
      *
      * @param string $username Username of the user to authenticate.
-     * @param array $params Other parameters for the anonymous login.
+     * @param auth_params $params Parameters for the anonymous authentication.
      * @throws moodle_exception
      */
-    private function login_anonymous_user(string $username, array $params): void {
+    private function login_anonymous_user(string $username, auth_params $params): void {
         global $CFG, $DB, $USER;
         $altlogin = $CFG->alternateloginurl;
         $CFG->alternateloginurl = '';
@@ -205,14 +202,14 @@ class auth extends auth_plugin_base {
             complete_user_login($user);
             set_moodle_cookie($USER->username);
             // Use the default cohort if none was sent in the query parameters.
-            $cohortname = $params['cohort'] ?? $this->cohort;
+            $cohortname = $params->cohort ?: $this->cohort;
             // Enrol user into the cohort so they have access to all related courses.
             if ($cohortid = $DB->get_field('cohort', 'id', ['idnumber' => $cohortname])) {
                 // This also internally triggers the `cohort_member_added` event.
                 cohort_add_member($cohortid, $user->id);
             }
-            if (($courseid = $params['course'] ?? 0) > 0 && $DB->record_exists('course', ['id' => $courseid])) {
-                $urltogo = "/course/view.php?id=$courseid";
+            if ($params->course && $DB->record_exists('course', ['id' => $params->course])) {
+                $urltogo = "/course/view.php?id=$params->course";
             } else {
                 $urltogo = core_login_get_return_url();
             }
@@ -238,37 +235,23 @@ class auth extends auth_plugin_base {
     }
 
     /**
-     * Confirms that the relevant parameters exist.
+     * Confirms that the relevant parameters are valid.
      *
-     * @param array $params Associative array of parameters.
-     * @return bool `true` if the keys {@see self::KEYNAME} and `ts` are present.
-     */
-    private function validate_parameters(array $params): bool {
-        return (isset($params[self::KEYNAME]) and isset($params['ts']));
-    }
-
-    /**
-     * Validates that the time is within the allowed window from the current UNIX time.
+     * - Ensures the `anon` flag is up.
+     * - Checks that the timestamp is within the allowed window from the current UNIX time and not in the future.
+     * - Matches the key with the {@see keyregex}.
      *
-     * @param int $time Timestamp since UNIX epoch.
-     * @return bool `true` if the provided timestamp is no more than {@see timeout} seconds in the past and not in the future.
+     * @param auth_params $params Anonymous authentication parameters.
+     * @return bool `true` if the parameters pass validation.
      */
-    private function validate_time(int $time): bool {
-        if ($this->timeout === 0) return true;
-        if ($time > time()) return false; // future time
-        return time() - $time <= $this->timeout;
-    }
-
-    /**
-     * Validates the key with the {@see validator} RegEx.
-     *
-     * @param string $key Key to validate.
-     * @return bool `true` if the key matches the {@see validator} RegEx.
-     */
-    private function validate_key(string $key): bool {
-        if (!str_starts_with($this->validator, '/')) $this->validator = '/'.$this->validator;
-        if (!str_ends_with($this->validator, '/')) $this->validator = $this->validator.'/';
-        return preg_match($this->validator, $key);
+    private function validate_parameters(auth_params $params): bool {
+        return match (true) {
+            !$params->anon => false,
+            $params->ts > time() => false,
+            $this->timeout > 0 && time() - $params->ts > $this->timeout => false,
+            !preg_match($this->keyregex, $params->key) => false,
+            default => true,
+        };
     }
 
     /**
