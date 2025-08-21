@@ -121,86 +121,120 @@ class auth extends auth_plugin_base {
      * @throws moodle_exception
      */
     public function loginpage_hook(): void {
-        global $FULLME, $DB, $CFG, $USER;
-
+        global $CFG, $DB, $FULLME;
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
-        $altlogin = $CFG->alternateloginurl;
-
         if (empty($auth)) {
             $params = $this->retrieve_encoded_params($this->retrieve_query_string($FULLME));
         } else {
             $params = $this->retrieve_encoded_params($auth);
         }
-
-        // if key 'anon' is set within encoded params, we should process this request using this plugin
-        if ($hook_is_active = ($params && isset($params['anon']) && $params['anon'] === '1')) {
-            $CFG->alternateloginurl = '';
+        // If the 'anon' key is not set within the query params, we are not processing this request.
+        if (!($params && isset($params['anon']) && $params['anon'] === '1')) {
+            return;
         }
-
-        if ($hook_is_active && ($this->validate_parameters($params) and $this->validate_time($params['ts']) and $this->validate_key($params[self::KEYNAME]))) {
-            $identifier = md5($this->authtype . $params[self::KEYNAME]); // will yield a 32 char hash
-            if (!$DB->record_exists('user', ['username' => $identifier, 'mnethostid' => $CFG->mnet_localhost_id, 'auth' => $this->authtype])) {
-                $user = new stdClass;
-                $user->username = $identifier;
-                $user->idnumber = $params[self::KEYNAME];
-                $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
-                $user->firstname = $this->firstname;
-                $user->lastname = $this->lastname;
-                $user->email = $this->email;
-                $user->country = 'AU';
-                $user->auth = $this->authtype;
-                $user->mailformat = 0;
-                $user->maildisplay = 0;
-                $user->autosubscribe = 0;
-                $user->mnethostid = $CFG->mnet_localhost_id;
-                $user->confirmed = 1;
-
-                $user->id = $DB->insert_record('user', $user);
-                $user = $DB->get_record('user', ['id' => $user->id]);
-                user_created::create_from_userid($user->id)->trigger();
-
-            } else {
-
-                // must update the password so that validate_internal_user_password() doesn't see 'not cached'
-                $user = $DB->get_record('user', ['username' => $identifier]);
-                $user->password = hash_internal_user_password($identifier . ($CFG->passwordsaltmain ?? ''));
-                $DB->update_record('user', $user);
-                user_updated::create_from_userid($user->id)->trigger();
-
-            }
-
-            if ($user = authenticate_user_login($identifier, $identifier . ($CFG->passwordsaltmain ?? ''))) {
-
-                complete_user_login($user);
-                set_moodle_cookie($USER->username);
-
-                $cohort_name = $this->cohort; // pick up default cohort to enrol into
-                if (isset($params['cohort'])) $cohort_name = $params['cohort']; // unless one is sent in parameters ... override
-
-                // enrol users into the anonymous cohort so they have access to all courses
-                if ($DB->record_exists('cohort', ['idnumber'=> $cohort_name])) {
-                    $cohortrow = $DB->get_record('cohort', ['idnumber' => $cohort_name]);
-                    if (!$DB->record_exists('cohort_members', ['cohortid'=>$cohortrow->id, 'userid'=>$user->id])) {
-                        cohort_add_member($cohortrow->id, $user->id); // internally triggers cohort_member_added event
-                    }
-                }
-
-                if (($courseid = $params['course'] ?? 0) > 0 && $DB->record_exists('course', ['id' => $courseid])) {
-                    $urltogo = "/course/view.php?id=$courseid";
-                } else {
-                    $urltogo = core_login_get_return_url();
-                }
-
-                redirect(new moodle_url($urltogo));
-                die();  // STOP! don't let any other auth plugin take over, including the built-in auth
-
-            } else {
-                // restore alternate login url, let subsequent plugins take over
-                $CFG->alternateloginurl = $altlogin;
-            }
-            echo "end";
-            exit;
+        // If the parameters are invalid, we are not processing this request.
+        // TODO: Validate all parameters once using a class.
+        if (!($this->validate_parameters($params) and $this->validate_time($params['ts']) and $this->validate_key($params[self::KEYNAME]))) {
+            return;
         }
+        $identifier = md5($this->authtype . $params[self::KEYNAME]); // will yield a 32 char hash
+        if (!$DB->record_exists('user', ['username' => $identifier, 'mnethostid' => $CFG->mnet_localhost_id, 'auth' => $this->authtype])) {
+            $this->create_anonymous_user($identifier, $params[self::KEYNAME]);
+        } else {
+            // Update the password so that `validate_internal_user_password` doesn't see 'not cached'.
+            // TODO: Check if this is really necessary.
+            $this->update_anonymous_user_password($identifier);
+        }
+        $this->login_anonymous_user($identifier, $params);
+    }
+
+    /**
+     * Creates a new anonymous user with the specified username and idnumber.
+     *
+     * @param string $username Value to assign to the new user's `username` field.
+     * @param string $idnumber Value to assign to the new user's `idnumber` field.
+     * @throws moodle_exception
+     */
+    private function create_anonymous_user(string $username, string $idnumber): void {
+        // TODO: See if we can't just use the built-in `user_create_user()`.
+        global $CFG, $DB;
+        $user = new stdClass;
+        $user->username = $username;
+        $user->idnumber = $idnumber;
+        $user->password = hash_internal_user_password($this->get_user_password($username));
+        $user->firstname = $this->firstname;
+        $user->lastname = $this->lastname;
+        $user->email = $this->email;
+        $user->country = '';
+        $user->auth = $this->authtype;
+        $user->mailformat = 0;
+        $user->maildisplay = 0;
+        $user->autosubscribe = 0;
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        $user->confirmed = 1;
+        $user->id = $DB->insert_record('user', $user);
+        user_created::create_from_userid($user->id)->trigger();
+    }
+
+    /**
+     * Sets the password for the user with the provided username.
+     *
+     * @param string $username Username of the user for whom to set the password.
+     * @throws moodle_exception
+     */
+    private function update_anonymous_user_password(string $username): void {
+        global $DB;
+        $user = $DB->get_record('user', ['username' => $username]);
+        $user->password = hash_internal_user_password($this->get_user_password($username));
+        $DB->update_record('user', $user);
+        user_updated::create_from_userid($user->id)->trigger();
+    }
+
+    /**
+     * Attempts to log in an anonymous user from the login page hook.
+     *
+     * @param string $username Username of the user to authenticate.
+     * @param array $params Other parameters for the anonymous login.
+     * @throws moodle_exception
+     */
+    private function login_anonymous_user(string $username, array $params): void {
+        global $CFG, $DB, $USER;
+        $altlogin = $CFG->alternateloginurl;
+        $CFG->alternateloginurl = '';
+        if ($user = authenticate_user_login($username, $this->get_user_password($username))) {
+            complete_user_login($user);
+            set_moodle_cookie($USER->username);
+            // Use the default cohort if none was sent in the query parameters.
+            $cohortname = $params['cohort'] ?? $this->cohort;
+            // Enrol user into the cohort so they have access to all related courses.
+            if ($cohortid = $DB->get_field('cohort', 'id', ['idnumber' => $cohortname])) {
+                // This also internally triggers the `cohort_member_added` event.
+                cohort_add_member($cohortid, $user->id);
+            }
+            if (($courseid = $params['course'] ?? 0) > 0 && $DB->record_exists('course', ['id' => $courseid])) {
+                $urltogo = "/course/view.php?id=$courseid";
+            } else {
+                $urltogo = core_login_get_return_url();
+            }
+            redirect(new moodle_url($urltogo));
+            // STOP! don't let any other auth plugin take over, including the built-in auth.
+            // TODO: Check if this is really necessary.
+            die();
+        } else {
+            // Restore alternate login url, let subsequent plugins take over.
+            $CFG->alternateloginurl = $altlogin;
+        }
+    }
+
+    /**
+     * Constructs the not yet hashed password for an anonymous user from his username.
+     *
+     * @param string $username Username of the user for whom to make the password.
+     * @return string Raw (unhashed) password for the given user.
+     */
+    private function get_user_password(string $username): string {
+        // TODO: Switch to peppers.
+        return $username . ($CFG->passwordsaltmain ?? '');
     }
 
     /**
