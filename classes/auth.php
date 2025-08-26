@@ -52,13 +52,8 @@ use stdClass;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class auth extends auth_plugin_base {
-    private string $firstname;
-    private string $lastname;
-    private string $email;
-    private string $cohort;
-    private int $timeout;
-    private string $keyregex;
-    private int $role;
+    /** @var config */
+    public $config;
 
     /**
      * Fetches plugin config and assigns internal properties as needed.
@@ -67,20 +62,7 @@ class auth extends auth_plugin_base {
      */
     public function __construct() {
         $this->authtype = 'anonymous';
-        $this->config = get_config('auth_anonymous');
-        $this->firstname = $this->config->firstname ?: 'anonymous';
-        $this->lastname = $this->config->lastname ?: 'user';
-        $this->email = $this->config->email ?: 'anonymous@127.0.0.1';
-        $this->cohort = $this->config->cohort ?: 'anonymous';
-        $this->timeout = $this->config->timeout ?: 0;
-        $this->role = $this->config->assignrole ?: 0;
-        $this->keyregex = $this->config->regex ?: '/./';
-        if (!str_starts_with($this->keyregex, '/')) {
-            $this->keyregex = "/$this->keyregex";
-        }
-        if (!str_ends_with($this->keyregex, '/')) {
-            $this->keyregex = "$this->keyregex/";
-        }
+        $this->config = config::get();
     }
 
     /**
@@ -156,9 +138,9 @@ class auth extends auth_plugin_base {
         $user->username = $username;
         $user->idnumber = $idnumber;
         $user->password = hash_internal_user_password($this->get_user_password($username));
-        $user->firstname = $this->firstname;
-        $user->lastname = $this->lastname;
-        $user->email = $this->email;
+        $user->firstname = $this->config->firstname;
+        $user->lastname = $this->config->lastname;
+        $user->email = $this->config->email;
         $user->country = '';
         $user->auth = $this->authtype;
         $user->mailformat = 0;
@@ -199,7 +181,7 @@ class auth extends auth_plugin_base {
             complete_user_login($user);
             set_moodle_cookie($USER->username);
             // Use the default cohort if none was sent in the query parameters.
-            $cohortname = $params->cohort ?: $this->cohort;
+            $cohortname = $params->cohort ?: $this->config->cohort;
             // Enrol user into the cohort so they have access to all related courses.
             if ($cohortid = $DB->get_field('cohort', 'id', ['idnumber' => $cohortname])) {
                 // This also internally triggers the `cohort_member_added` event.
@@ -236,7 +218,7 @@ class auth extends auth_plugin_base {
      *
      * - Ensures the `anon` flag is up.
      * - Checks that the timestamp is within the allowed window from the current UNIX time and not in the future.
-     * - Matches the key with the {@see keyregex}.
+     * - Matches the key with the regular expression.
      *
      * @param auth_params $params Anonymous authentication parameters.
      * @return bool `true` if the parameters pass validation.
@@ -245,8 +227,8 @@ class auth extends auth_plugin_base {
         return match (true) {
             !$params->anon => false,
             $params->ts > time() => false,
-            $this->timeout > 0 && time() - $params->ts > $this->timeout => false,
-            !preg_match($this->keyregex, $params->key) => false,
+            $this->config->timeout > 0 && time() - $params->ts > $this->config->timeout => false,
+            !empty($this->config->regex) && !preg_match($this->config->regex, $params->key) => false,
             default => true,
         };
     }
@@ -284,9 +266,9 @@ class auth extends auth_plugin_base {
      * @throws dml_exception
      */
     function sync_roles($user): void {
-        if ($user && $this->role !== 0) {
+        if ($user && $this->config->role !== 0) {
             $systemcontext = context_system::instance();
-            role_assign($this->role, $user->id, $systemcontext->id, 'auth_anonymous');
+            role_assign($this->config->role, $user->id, $systemcontext->id, 'auth_anonymous');
         }
     }
 }

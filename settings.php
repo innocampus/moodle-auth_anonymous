@@ -26,6 +26,7 @@
  */
 
 use core\lang_string;
+use auth_anonymous\config;
 
 defined('MOODLE_INTERNAL') || die;
 
@@ -43,7 +44,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/cohort',
         visiblename: new lang_string('cohort','cohort'),
         description: new lang_string('cohort_desc', 'auth_anonymous'),
-        defaultsetting: 'anonymous',
+        defaultsetting: config::DEFAULT_COHORT,
         paramtype: PARAM_RAW_TRIMMED,
     ));
 
@@ -51,7 +52,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/firstname',
         visiblename: new lang_string('firstname'),
         description: '',
-        defaultsetting: 'anonymous',
+        defaultsetting: config::DEFAULT_FIRSTNAME,
         paramtype: PARAM_RAW_TRIMMED,
     ));
 
@@ -59,7 +60,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/lastname',
         visiblename: new lang_string('lastname'),
         description: '',
-        defaultsetting: 'user',
+        defaultsetting: config::DEFAULT_LASTNAME,
         paramtype: PARAM_RAW_TRIMMED,
     ));
 
@@ -67,7 +68,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/email',
         visiblename: new lang_string('email'),
         description: '',
-        defaultsetting: 'nobody@127.0.0.1',
+        defaultsetting: config::DEFAULT_EMAIL,
         paramtype: PARAM_RAW_TRIMMED,
     ));
 
@@ -75,7 +76,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/regex',
         visiblename: new lang_string('keyregex', 'auth_anonymous'),
         description: new lang_string('keyregex_desc', 'auth_anonymous'),
-        defaultsetting: '',
+        defaultsetting: config::DEFAULT_REGEX,
         paramtype: PARAM_RAW_TRIMMED,
     ));
 
@@ -83,7 +84,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/timeout',
         visiblename: new lang_string('timeout', 'auth_anonymous'),
         description: new lang_string('timeout_desc', 'auth_anonymous'),
-        defaultsetting: 0,
+        defaultsetting: config::DEFAULT_TIMEOUT,
         choices: [
             0 => new lang_string('never'),
             60 => new lang_string('numminutes','moodle', 1),
@@ -103,10 +104,11 @@ if ($ADMIN->fulltree) {
         $rolechoices[$role->id] = $role->localname;
     }
     $settings->add(new admin_setting_configselect(
+        // TODO: Rename to `role`.
         name: 'auth_anonymous/assignrole',
         visiblename: new lang_string('role', 'auth_anonymous'),
         description: new lang_string('role_desc', 'auth_anonymous'),
-        defaultsetting: 0,
+        defaultsetting: config::DEFAULT_ROLE,
         choices: $rolechoices,
      ));
 
@@ -114,7 +116,7 @@ if ($ADMIN->fulltree) {
         name: 'auth_anonymous/logouturl',
         visiblename: new lang_string('logouturl', 'auth_anonymous'),
         description: new lang_string('logouturl_desc', 'auth_anonymous'),
-        defaultsetting: '',
+        defaultsetting: config::DEFAULT_LOGOUT_URL,
         paramtype: PARAM_RAW_TRIMMED,
      ));
 
