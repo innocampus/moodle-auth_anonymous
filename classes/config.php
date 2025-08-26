@@ -66,7 +66,7 @@ final readonly class config {
     public static function get(): self {
         $untyped = get_config('auth_anonymous');
         if (!empty($untyped->regex)) {
-            $regex = preg_quote($untyped->regex, '/');
+            $regex = $untyped->regex;
             if (!str_starts_with($regex, '/')) {
                 $regex = "/$regex";
             }

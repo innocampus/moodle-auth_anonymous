@@ -224,6 +224,7 @@ class auth extends auth_plugin_base {
      * @return bool `true` if the parameters pass validation.
      */
     private function validate_parameters(auth_params $params): bool {
+        // TODO: Add debugging calls for validation errors.
         return match (true) {
             !$params->anon => false,
             $params->ts > time() => false,
