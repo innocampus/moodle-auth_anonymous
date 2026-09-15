@@ -66,6 +66,22 @@ final readonly class auth_params {
     }
 
     /**
+     * Encodes the parameters the way {@see decode} expects to receive them.
+     *
+     * @return string Base64 encoded query string.
+     */
+    public function encode(): string {
+        $params = ['anon' => (int) $this->anon, 'key' => $this->key, 'ts' => $this->ts];
+        if ($this->course) {
+            $params['course'] = $this->course;
+        }
+        if ($this->cohort !== '') {
+            $params['cohort'] = $this->cohort;
+        }
+        return base64_encode(http_build_query($params, arg_separator: '&'));
+    }
+
+    /**
      * Constructs a new instance from an encoded query string.
      *
      * Anything that does not decode into a query string yields an instance with default values,

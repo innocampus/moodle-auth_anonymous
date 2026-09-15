@@ -55,6 +55,9 @@ class auth extends auth_plugin_base {
     /** Longest key we accept; the key is stored verbatim in the `idnumber` field of the user record. */
     const KEY_MAX_LENGTH = 255;
 
+    /** Number of random characters appended to {@see config::$keyprefix} by {@see get_login_url}. */
+    const KEY_RANDOM_LENGTH = 32;
+
     /** @var config */
     public $config;
 
@@ -96,6 +99,29 @@ class auth extends auth_plugin_base {
      */
     public function is_internal(): false {
         return false;
+    }
+
+    /**
+     * Builds the URL that starts an anonymous login.
+     *
+     * Key and timestamp are generated per call, so this has to be called when the user acts on the
+     * URL rather than when a page containing it is rendered: a cached page would hand the same
+     * identity to every visitor, and its timestamp would age against {@see config::$timeout}.
+     *
+     * @param int $courseid Course to open after login; `0` (default) uses the standard return URL.
+     * @param string $cohort Cohort to add the user to; empty string (default) uses the configured one.
+     * @return moodle_url URL of the login page, carrying the encoded parameters.
+     * @throws dml_exception
+     */
+    public static function get_login_url(int $courseid = 0, string $cohort = ''): moodle_url {
+        $params = new auth_params(
+            anon: true,
+            key: config::get()->keyprefix . random_string(self::KEY_RANDOM_LENGTH),
+            ts: time(),
+            course: $courseid,
+            cohort: $cohort,
+        );
+        return new moodle_url('/login/index.php', ['auth' => $params->encode()]);
     }
 
     /**

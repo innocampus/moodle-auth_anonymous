@@ -12,6 +12,7 @@ defined('MOODLE_INTERNAL') || die();
 
 
 $string['auth_anonymousdescription'] = 'Login requests are sent from external system as a form submission to the moodle login page.';
+$string['pluginisdisabled'] = 'The auth_anonymous plugin is disabled.';
 $string['pluginname'] = 'Anonymous Authentication';
 
 $string['cohort_desc'] = 'The idnumber of a cohort to add the user to (optional; skipped if the cohort cannot be found).';
