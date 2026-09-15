@@ -30,3 +30,5 @@ $string['timeout_desc'] = 'The link contains a timestamp. This setting determine
 
 $string['role'] = 'Role:';
 $string['role_desc'] = 'Assign users to this role (optional)';
+
+$string['upgrade_regexnotmigrated'] = 'The auth_anonymous key validator "{$a}" could not be converted into a key prefix automatically, so keys are no longer restricted. Set the "Key prefix" setting by hand if you need that restriction back.';
