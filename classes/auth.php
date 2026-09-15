@@ -52,6 +52,9 @@ use stdClass;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class auth extends auth_plugin_base {
+    /** Longest key we accept; the key is stored verbatim in the `idnumber` field of the user record. */
+    const KEY_MAX_LENGTH = 255;
+
     /** @var config */
     public $config;
 
@@ -218,7 +221,7 @@ class auth extends auth_plugin_base {
      *
      * - Ensures the `anon` flag is up.
      * - Checks that the timestamp is within the allowed window from the current UNIX time and not in the future.
-     * - Matches the key with the regular expression.
+     * - Checks that the key carries the configured prefix and some material beyond it.
      *
      * @param auth_params $params Anonymous authentication parameters.
      * @return bool `true` if the parameters pass validation.
@@ -229,7 +232,9 @@ class auth extends auth_plugin_base {
             !$params->anon => false,
             $params->ts > time() => false,
             $this->config->timeout > 0 && time() - $params->ts > $this->config->timeout => false,
-            !empty($this->config->regex) && !preg_match($this->config->regex, $params->key) => false,
+            !str_starts_with($params->key, $this->config->keyprefix) => false,
+            strlen($params->key) <= strlen($this->config->keyprefix) => false,
+            strlen($params->key) > self::KEY_MAX_LENGTH => false,
             default => true,
         };
     }

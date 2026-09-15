@@ -19,8 +19,8 @@ $string['cohort_desc'] = 'The idnumber of a cohort to add the user to (optional;
 $string['logouturl'] = 'Logout url';
 $string['logouturl_desc'] = 'If set, users who log out using this authentication method will be redirected to this url afterwards.';
 
-$string['keyregex'] = 'Key validator';
-$string['keyregex_desc'] = 'A <a href="https://regexr.com/">regular expression</a> to validate the key against. If set, the key must match this regex to be valid.';
+$string['keyprefix'] = 'Key prefix';
+$string['keyprefix_desc'] = 'If set, only keys starting with this string are accepted, and generated keys carry it. Use it to reserve this plugin for links from a particular source, or to invalidate every link issued so far by changing it.';
 
 $string['settings_desc'] = 'When authenticating as an anonymous user, a user record matching the key specified will be found or created and used for standard login. Users require a firstname, lastname and email to be set so these will be set to the values or defaults shown below.';
 

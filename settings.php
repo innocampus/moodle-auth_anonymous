@@ -73,11 +73,11 @@ if ($ADMIN->fulltree) {
     ));
 
     $settings->add(new admin_setting_configtext(
-        name: 'auth_anonymous/regex',
-        visiblename: new lang_string('keyregex', 'auth_anonymous'),
-        description: new lang_string('keyregex_desc', 'auth_anonymous'),
-        defaultsetting: config::DEFAULT_REGEX,
-        paramtype: PARAM_RAW_TRIMMED,
+        name: 'auth_anonymous/keyprefix',
+        visiblename: new lang_string('keyprefix', 'auth_anonymous'),
+        description: new lang_string('keyprefix_desc', 'auth_anonymous'),
+        defaultsetting: config::DEFAULT_KEY_PREFIX,
+        paramtype: PARAM_ALPHANUMEXT,
     ));
 
     $settings->add(new admin_setting_configselect(
