@@ -108,7 +108,7 @@ class auth extends auth_plugin_base {
     public function loginpage_hook(): void {
         global $CFG, $DB;
         $auth = optional_param('auth', '', PARAM_ALPHANUM);
-        $params = auth_params::from_array($this->retrieve_encoded_params($auth));
+        $params = auth_params::decode($auth);
         if (!$this->validate_parameters($params)) {
             // If the parameters are invalid, we are not processing this request.
             return;
@@ -232,20 +232,6 @@ class auth extends auth_plugin_base {
             !empty($this->config->regex) && !preg_match($this->config->regex, $params->key) => false,
             default => true,
         };
-    }
-
-    /**
-     * Given a base64 encoded string, decodes and retrieves the query parameters.
-     *
-     * @param string $encstr Base64 encoded string.
-     * @return array Associative array of decoded query parameters.
-     */
-    private function retrieve_encoded_params(string $encstr): array {
-        $params = [];
-        if ($decstr = base64_decode($encstr, strict: true)) {
-            parse_str($decstr, $params);
-        }
-        return $params;
     }
 
     /**

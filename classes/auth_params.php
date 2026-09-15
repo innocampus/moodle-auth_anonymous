@@ -64,4 +64,21 @@ final readonly class auth_params {
             cohort: $params['cohort'] ?? '',
         );
     }
+
+    /**
+     * Constructs a new instance from an encoded query string.
+     *
+     * Anything that does not decode into a query string yields an instance with default values,
+     * which {@see \auth_anonymous\auth::validate_parameters} then rejects.
+     *
+     * @param string $encoded Base64 encoded query string.
+     * @return self New instance.
+     */
+    public static function decode(string $encoded): self {
+        $params = [];
+        if ($decoded = base64_decode($encoded, strict: true)) {
+            parse_str($decoded, $params);
+        }
+        return self::from_array($params);
+    }
 }
