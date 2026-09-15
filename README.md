@@ -12,7 +12,22 @@ Because Guest access can't write to the database, only read. Sometimes you need 
 
 ## Security
 
-Firstly, properly lock down what the anonymous user can do once logged in. Could this be used to spam my site? Absolutely, so be careful where you use the url! Use POST to make it less obvious to the casual observer. You should specify a regular expression to match the key; if the key is rejected, the plugin will not trigger and your other authentication providers can take over. Or modify the plugin to use openssl_decrypt() with a reversible encryption algorithm such as aes-256-cbc instead of base64...
+Firstly, properly lock down what the anonymous user can do once logged in. Could this be used to spam my site? Absolutely, so be careful where you use the url! Use POST to make it less obvious to the casual observer. You should set a key prefix; keys without it are ignored, so the plugin does not trigger and your other authentication providers can take over. Changing the prefix also invalidates every link issued so far.
+
+Note that none of this authenticates anybody: the encoding is not a signature and the prefix is not a secret, so a conforming key can always be constructed by hand. That is inherent to anonymous login — treat these links as an entry point, not as a credential.
+
+## Logging in
+
+Link to `/auth/anonymous/login.php`, optionally with a `course` id:
+
+```
+https://elearning.yourdomain.com/auth/anonymous/login.php
+https://elearning.yourdomain.com/auth/anonymous/login.php?course=42
+```
+
+It mints a key and a timestamp and forwards to the login page. Link here rather than building the URL yourself: the timestamp is checked against the link timeout, so a URL built while rendering a page starts ageing as soon as that page is cached, and every visitor of it shares one identity.
+
+Build the URL yourself only when an external system issues the links, in which case the parameters below apply.
 
 ## Example (php GET)
 
@@ -30,7 +45,7 @@ Firstly, properly lock down what the anonymous user can do once logged in. Could
 
 | Parameter | Meaning |
 | --- | --- |
-| key      | A value representing the user. Used in hash functions to generate a username and password. Can be pattern-validated against a regular expression before being accepted. |
+| key      | A value representing the user. Used in hash functions to generate a username and password. Must carry the configured key prefix, and is limited to 255 characters. |
 | anon     | Must equal '1' |
 | course   | If set and greater than 1, open /course/view.php?id=X after a sucessful login |
 | ts       | Current unix timestamp, used to ensure link validity |
