@@ -41,6 +41,7 @@ final readonly class config {
     const DEFAULT_LASTNAME = 'user';
     const DEFAULT_EMAIL = 'nobody@127.0.0.1';
     const DEFAULT_COHORT = 'anonymous';
+    const DEFAULT_COURSE = 0;
     const DEFAULT_KEY_PREFIX = '';
     const DEFAULT_TIMEOUT = 0;
     const DEFAULT_ROLE = 0;
@@ -52,6 +53,7 @@ final readonly class config {
         public string $lastname = self::DEFAULT_LASTNAME,
         public string $email = self::DEFAULT_EMAIL,
         public string $cohort = self::DEFAULT_COHORT,
+        public int $course = self::DEFAULT_COURSE,
         public string $keyprefix = self::DEFAULT_KEY_PREFIX,
         public int $timeout = self::DEFAULT_TIMEOUT,
         public int $role = self::DEFAULT_ROLE,
@@ -70,6 +72,7 @@ final readonly class config {
             lastname: $untyped->lastname ?: self::DEFAULT_LASTNAME,
             email: $untyped->email ?: self::DEFAULT_EMAIL,
             cohort: $untyped->cohort ?: self::DEFAULT_COHORT,
+            course: $untyped->course ?: self::DEFAULT_COURSE,
             keyprefix: $untyped->keyprefix ?? self::DEFAULT_KEY_PREFIX,
             timeout: $untyped->timeout ?: self::DEFAULT_TIMEOUT,
             role: $untyped->assignrole ?: self::DEFAULT_ROLE,

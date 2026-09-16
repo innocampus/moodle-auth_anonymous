@@ -17,6 +17,8 @@ $string['pluginname'] = 'Anonymous Authentication';
 
 $string['cohort_desc'] = 'The idnumber of a cohort to add the user to (optional; skipped if the cohort cannot be found).';
 
+$string['course_desc'] = 'The ID of a course to open after login (optional; 0 uses the standard return URL). A link that carries its own course overrides this. Access comes from membership in the cohort above, so a course outside that cohort may greet the user with an enrolment page.';
+
 $string['logouturl'] = 'Logout url';
 $string['logouturl_desc'] = 'If set, users who log out using this authentication method will be redirected to this url afterwards.';
 

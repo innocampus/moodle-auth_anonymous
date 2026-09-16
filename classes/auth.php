@@ -108,7 +108,7 @@ class auth extends auth_plugin_base {
      * URL rather than when a page containing it is rendered: a cached page would hand the same
      * identity to every visitor, and its timestamp would age against {@see config::$timeout}.
      *
-     * @param int $courseid Course to open after login; `0` (default) uses the standard return URL.
+     * @param int $courseid Course to open after login; `0` (default) uses the configured one.
      * @param string $cohort Cohort to add the user to; empty string (default) uses the configured one.
      * @return moodle_url URL of the login page, carrying the encoded parameters.
      * @throws dml_exception
@@ -216,8 +216,10 @@ class auth extends auth_plugin_base {
                 // This also internally triggers the `cohort_member_added` event.
                 cohort_add_member($cohortid, $user->id);
             }
-            if ($params->course && $DB->record_exists('course', ['id' => $params->course])) {
-                $urltogo = "/course/view.php?id=$params->course";
+            // Use the default course if none was sent in the query parameters.
+            $courseid = $params->course ?: $this->config->course;
+            if ($courseid && $DB->record_exists('course', ['id' => $courseid])) {
+                $urltogo = "/course/view.php?id=$courseid";
             } else {
                 $urltogo = core_login_get_return_url();
             }

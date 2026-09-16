@@ -25,6 +25,8 @@ https://elearning.yourdomain.com/auth/anonymous/login.php
 https://elearning.yourdomain.com/auth/anonymous/login.php?course=42
 ```
 
+Without a `course` id, the course configured in the plugin settings is used; without that, the user lands on the standard return URL.
+
 It mints a key and a timestamp and forwards to the login page. Link here rather than building the URL yourself: the timestamp is checked against the link timeout, so a URL built while rendering a page starts ageing as soon as that page is cached, and every visitor of it shares one identity.
 
 Build the URL yourself only when an external system issues the links, in which case the parameters below apply.
@@ -47,7 +49,7 @@ Build the URL yourself only when an external system issues the links, in which c
 | --- | --- |
 | key      | A value representing the user. Used in hash functions to generate a username and password. Must carry the configured key prefix, and is limited to 255 characters. |
 | anon     | Must equal '1' |
-| course   | If set and greater than 1, open /course/view.php?id=X after a sucessful login |
+| course   | If set, open /course/view.php?id=X after a successful login. Leave it out to use the course configured in the plugin settings |
 | ts       | Current unix timestamp, used to ensure link validity |
 
 Parameters **must be** base64 encoded and passed either as the entire query string (GET), or as the `auth` parameter (GET or POST).

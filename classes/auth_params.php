@@ -38,7 +38,7 @@ final readonly class auth_params {
      * @param bool $anon Flag to explicitly tell the login hook to use anonymous authentication.
      * @param string $key Unique key for the user being authenticated.
      * @param int $ts UNIX timestamp for when the URL was generated.
-     * @param int $course ID of a course to redirect the user to after authentication; `0` (default) disables this.
+     * @param int $course ID of a course to redirect the user to after authentication; `0` (default) uses the configured one.
      * @param string $cohort Name of a cohort to add the user to after authentication; empty string (default) disables this.
      */
     public function __construct(

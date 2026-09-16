@@ -26,6 +26,7 @@
  */
 
 use core\lang_string;
+use auth_anonymous\admin\setting_course;
 use auth_anonymous\config;
 
 defined('MOODLE_INTERNAL') || die;
@@ -46,6 +47,13 @@ if ($ADMIN->fulltree) {
         description: new lang_string('cohort_desc', 'auth_anonymous'),
         defaultsetting: config::DEFAULT_COHORT,
         paramtype: PARAM_RAW_TRIMMED,
+    ));
+
+    $settings->add(new setting_course(
+        name: 'auth_anonymous/course',
+        visiblename: new lang_string('course'),
+        description: new lang_string('course_desc', 'auth_anonymous'),
+        defaultsetting: config::DEFAULT_COURSE,
     ));
 
     $settings->add(new admin_setting_configtext(
